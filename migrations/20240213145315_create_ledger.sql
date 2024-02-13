@@ -1,0 +1,7 @@
+CREATE TABLE ledger (
+  id SERIAL PRIMARY KEY,
+  valor INTEGER NOT NULL
+  tipo ENUM ('c', 'd'),
+  descricao VARCHAR(2048),
+  realizada_em TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+)
