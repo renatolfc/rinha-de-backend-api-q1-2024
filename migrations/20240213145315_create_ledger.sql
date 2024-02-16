@@ -1,7 +1,13 @@
+CREATE TYPE tipot AS ENUM ('C', 'D');
 CREATE TABLE ledger (
   id SERIAL PRIMARY KEY,
-  valor INTEGER NOT NULL
-  tipo ENUM ('c', 'd'),
-  descricao VARCHAR(2048),
-  realizada_em TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-)
+  id_cliente INTEGER NOT NULL,
+  valor INTEGER NOT NULL,
+  tipo tipot NOT NULL,
+  descricao VARCHAR(10) NOT NULL,
+  realizada_em TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  -- FOREIGN KEY (id_cliente) REFERENCES users(id)
+);
+
+CREATE INDEX cliente_idx ON ledger(id_cliente);
+CREATE INDEX realizada_idx ON ledger(realizada_em);
