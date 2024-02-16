@@ -6,7 +6,7 @@ CREATE TABLE ledger (
   tipo tipot NOT NULL,
   descricao VARCHAR(10) NOT NULL,
   realizada_em TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  -- FOREIGN KEY (id_cliente) REFERENCES users(id)
+  FOREIGN KEY (id_cliente) REFERENCES users(id)
 );
 
 CREATE INDEX cliente_idx ON ledger(id_cliente);
