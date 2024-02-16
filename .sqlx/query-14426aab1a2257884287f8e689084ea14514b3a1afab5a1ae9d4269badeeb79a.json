@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE users SET saldo = saldo + $1, updated_at = $2\n\tWHERE id = $3\n\t",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Timestamptz",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "14426aab1a2257884287f8e689084ea14514b3a1afab5a1ae9d4269badeeb79a"
+}
