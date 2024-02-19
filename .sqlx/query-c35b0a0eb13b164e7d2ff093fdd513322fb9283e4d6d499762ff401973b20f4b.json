@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO ledger (id_cliente, valor, tipo, descricao)\n\tVALUES ($1, $2, $3, $4)\n\t",
+  "query": "INSERT INTO ledger (id_cliente, valor, tipo, descricao)\n        VALUES ($1, $2, $3, $4)",
   "describe": {
     "columns": [],
     "parameters": {
@@ -23,5 +23,5 @@
     },
     "nullable": []
   },
-  "hash": "5b8519685fc0c4dd07f066f5bec61a98d64055597d911f0079fb9bf438cbfba1"
+  "hash": "c35b0a0eb13b164e7d2ff093fdd513322fb9283e4d6d499762ff401973b20f4b"
 }
