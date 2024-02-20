@@ -267,7 +267,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
     let pool = sqlx::postgres::PgPoolOptions::new()
         .max_connections(16)
-        .min_connections(4)
+        .min_connections(8)
         .connect(args.dburi.as_str())
         .await?;
 
@@ -285,9 +285,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         let pool = pool.clone();
 
         tokio::task::spawn(async move {
-            let service = service_fn(move |req| {
-                dispatcher(pool.clone(), req)
-            });
+            let service = service_fn(move |req| dispatcher(pool.clone(), req));
             if let Err(err) = http1::Builder::new().serve_connection(io, service).await {
                 println!("Failed to serve connection: {:?}", err);
             }

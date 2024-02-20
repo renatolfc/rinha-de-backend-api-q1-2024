@@ -6,6 +6,8 @@ CREATE TABLE users (
   CHECK (saldo > -limite)
 );
 
+CREATE INDEX ON users (id);
+
 INSERT INTO users(limite, saldo)
 VALUES
   (100000, 0),

@@ -22,6 +22,5 @@ mimalloc = "0.1"
 [profile.release]
 codegen-units = 1
 lto = "fat"
-
-[build]
-rustflags = ["-C", "target-feature=+avx2", "-C", "target-feature=+fma", "-C", "target-feature=+ssse3"]
+opt-level = 3
+overflow-checks = false
