@@ -11,6 +11,10 @@ RUN wget https://musl.cc/x86_64-linux-musl-native.tgz && \
 RUN rustup target add x86_64-unknown-linux-musl
 RUN cargo install --target=x86_64-unknown-linux-musl --path .
 
-FROM alpine
+FROM gcr.io/distroless/static-debian12
 
-COPY --from=builder /usr/local/cargo/bin /usr/local/cargo/bin
+COPY --from=builder /usr/local/cargo/bin /app
+
+EXPOSE 9999
+
+CMD ["/app/rinha", "-d", "postgres://postgres:postgres@172.17.0.2/rinha"]
