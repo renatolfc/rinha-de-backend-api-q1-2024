@@ -9,8 +9,6 @@ RUN wget https://musl.cc/x86_64-linux-musl-native.tgz && \
     ln -s /usr/local/x86_64-linux-musl-native/bin/x86_64-linux-musl-gcc /usr/local/bin/musl-gcc
 
 RUN rustup target add x86_64-unknown-linux-musl
-RUN cargo build --target=x86_64-unknown-linux-musl --release
-
 RUN cargo install --target=x86_64-unknown-linux-musl --path .
 
 FROM alpine

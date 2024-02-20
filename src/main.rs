@@ -266,15 +266,10 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     let args = Args::parse();
     let pool = sqlx::postgres::PgPoolOptions::new()
-        .max_connections(16)
-        .min_connections(8)
+        .max_connections(5)
+        .min_connections(5)
         .connect(args.dburi.as_str())
         .await?;
-
-    sqlx::migrate!()
-        .run(&pool)
-        .await
-        .expect("Não rolou de popular o banco");
 
     let listener = TcpListener::bind(addr).await?;
     println!("Listening on: {}", addr);
