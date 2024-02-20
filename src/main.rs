@@ -235,7 +235,7 @@ fn full<T: Into<Bytes>>(chunk: T) -> BoxBody {
 
 #[tokio::main]
 async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
-    let addr: SocketAddr = ([127, 0, 0, 1], 9999).into();
+    let addr: SocketAddr = ([0, 0, 0, 0], 9999).into();
 
     let args = Args::parse();
     let pool = sqlx::postgres::PgPoolOptions::new()
