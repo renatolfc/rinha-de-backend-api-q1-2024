@@ -49,8 +49,8 @@ struct Transação {
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Saldo {
-    saldo: i32,
-    limite: i32,
+    saldo: Option<i32>,
+    limite: Option<i32>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -105,69 +105,42 @@ async fn põe_transação(
             .unwrap());
     }
 
-    let mut transaction = match pool.begin().await {
-        Ok(transaction) => transaction,
-        Err(_) => {
-            return Ok(Response::builder()
-                .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(full("Deu ruim na hora de iniciar a transação"))
-                .unwrap());
-        }
-    };
-
-    let saldo = match sqlx::query_as!(
-        Saldo,
-        r#"UPDATE users SET saldo = saldo + $1, updated_at = $2
-        WHERE id = $3
-        RETURNING saldo, limite
-        "#,
+    let mut saldo_atual: i32 = 0;
+    let mut limite_atual: i32 = 0;
+    let saldo = match sqlx::query!(
+        "CALL atualiza_livro_caixa($1, $2, $3, $4, $5, $6, $7)",
+        id,
+        transação.valor,
         if transação.tipo == TipoTransação::C {
             transação.valor
         } else {
             -transação.valor
         },
-        Utc::now(),
-        id
+        transação.tipo as _,
+        transação.descricao,
+        *&mut saldo_atual,
+        *&mut limite_atual
     )
-    .fetch_one(transaction.as_mut())
+    .fetch_one(&pool)
     .await
     {
-        Ok(saldo) => saldo,
+        Ok(row) => Saldo {
+            saldo: row.saldo_atual,
+            limite: row.limite_atual,
+        },
         Err(_) => {
             return Ok(Response::builder()
                 .status(StatusCode::UNPROCESSABLE_ENTITY)
-                .body(full("SaldoExtrato negativo excede limite"))
+                .body(full("Saldo negativo excede limite"))
                 .unwrap());
         }
     };
 
-    match sqlx::query!(
-        r#"INSERT INTO ledger (id_cliente, valor, tipo, descricao)
-        VALUES ($1, $2, $3, $4)"#,
-        id,
-        transação.valor,
-        transação.tipo as _,
-        transação.descricao
-    )
-    .execute(&mut *transaction)
-    .await
-    {
-        Ok(ledger_insertion) => ledger_insertion,
-        Err(_) => {
-            return Ok(Response::builder()
-                .status(StatusCode::UNPROCESSABLE_ENTITY)
-                .body(full("Deu ruim na hora de inserir a transação"))
-                .unwrap());
-        }
-    };
-    match transaction.commit().await {
-        Ok(_) => (),
-        Err(_) => {
-            return Ok(Response::builder()
-                .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(full("Deu ruim na hora de commitar a transação"))
-                .unwrap());
-        }
+    if saldo.saldo.is_none() {
+        return Ok(Response::builder()
+            .status(StatusCode::UNPROCESSABLE_ENTITY)
+            .body(full("Saldo negativo excede limite"))
+            .unwrap());
     }
 
     return Ok(Response::builder()
@@ -241,7 +214,7 @@ async fn pega_extrato(pool: PgPool, id: i32) -> Result<Response<BoxBody>> {
     };
 
     let ret = Extrato {
-        saldo: saldo,
+        saldo,
         ultimas_transacoes: transações,
     };
     let json = serde_json::to_string(&ret).unwrap();
