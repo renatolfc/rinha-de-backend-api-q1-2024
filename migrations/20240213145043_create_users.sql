@@ -2,7 +2,6 @@ CREATE TABLE users (
   id SERIAL PRIMARY KEY,
   limite INTEGER NOT NULL,
   saldo INTEGER NOT NULL,
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CHECK (saldo > -limite)
 );
 

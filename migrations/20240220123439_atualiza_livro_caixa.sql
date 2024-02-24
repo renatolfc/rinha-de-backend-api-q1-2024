@@ -13,7 +13,6 @@ BEGIN
   INSERT INTO ledger (id_cliente, valor, tipo, descricao) VALUES (id_cliente, valor, tipo, descricao);
   UPDATE users
   SET saldo = saldo + valor_extrato,
-    updated_at = now() at time zone 'utc'
   WHERE id = id_cliente RETURNING saldo, limite INTO saldo_atual, limite_atual;
   COMMIT;
   RETURN;
