@@ -12,7 +12,7 @@ $$
 BEGIN
   INSERT INTO ledger (id_cliente, valor, tipo, descricao) VALUES (id_cliente, valor, tipo, descricao);
   UPDATE users
-  SET saldo = saldo + valor_extrato,
+  SET saldo = saldo + valor_extrato
   WHERE id = id_cliente RETURNING saldo, limite INTO saldo_atual, limite_atual;
   COMMIT;
   RETURN;
