@@ -1,9 +1,7 @@
 use std::env;
 use std::net::{SocketAddr, ToSocketAddrs};
 
-use hyper::{
-    server::conn::http1, service::service_fn
-};
+use hyper::{server::conn::http1, service::service_fn};
 use hyper_util::rt::TokioIo;
 use tokio::net::{TcpListener, TcpStream};
 
@@ -17,14 +15,16 @@ fn split_str(input: &str) -> Vec<String> {
 
 #[tokio::main]
 async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
-    let servers = split_str(
-        &env::var("SERVERS").unwrap_or_else(|_| "api01:9999,api02:9999".into()),
-    );
+    let servers =
+        split_str(&env::var("SERVERS").unwrap_or_else(|_| "api01:9999,api02:9999".into()));
     println!("Servers: {:?}", servers);
 
     let inet_addrs: Vec<SocketAddr> = servers
         .iter()
-        .map(|s| s.to_socket_addrs().expect("Unable to resolve socket address for server"))
+        .map(|s| {
+            s.to_socket_addrs()
+                .expect("Unable to resolve socket address for server")
+        })
         .flatten()
         .collect();
 
@@ -38,7 +38,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         let out_addr = inet_addrs[counter];
 
         let (stream, _) = listener.accept().await?;
-		let io = TokioIo::new(stream);
+        let io = TokioIo::new(stream);
 
         let service = service_fn(move |mut req| {
             let uri_string = format!(
