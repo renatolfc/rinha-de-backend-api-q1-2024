@@ -1,11 +1,8 @@
 CREATE TABLE users (
   id SERIAL PRIMARY KEY,
   limite INTEGER NOT NULL,
-  saldo INTEGER NOT NULL,
-  CHECK (saldo > -limite)
+  saldo INTEGER NOT NULL
 );
-
-CREATE INDEX ON users (id);
 
 INSERT INTO users(limite, saldo)
 VALUES

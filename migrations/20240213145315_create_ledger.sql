@@ -9,5 +9,4 @@ CREATE TABLE ledger (
   FOREIGN KEY (id_cliente) REFERENCES users(id)
 );
 
-CREATE INDEX cliente_idx ON ledger(id_cliente);
-CREATE INDEX realizada_idx ON ledger(realizada_em);
+CREATE INDEX realizada_idx ON ledger(realizada_em DESC, id_cliente);
