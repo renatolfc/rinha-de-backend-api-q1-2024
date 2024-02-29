@@ -25,6 +25,120 @@ where
     Ok(body)
 }
 
+#[inline]
+async fn credita(id: i32, valor: i32, descricao: &String, pool: &PgPool) -> Saldo {
+    match sqlx::query!("SELECT * FROM poe($1, $2, $3, null, null)", id, valor, descricao)
+        .fetch_one(pool)
+        .await
+        {
+            Ok(row) => {
+                return Saldo {
+                    saldo: row.saldo_atual,
+                    limite: row.limite_atual
+                }
+            }
+            Err(e) => {
+                println!("Erro ao creditar: {}", e);
+                return Saldo {
+                    saldo: Some(-1),
+                    limite: Some(-1),
+                };
+            }
+        }
+}
+
+#[inline]
+async fn credita_pessimista(id: i32, valor: i32, descricao: &String, pool: &PgPool) -> Saldo {
+    let mut tx = pool.begin().await.unwrap();
+
+    sqlx::query!("SELECT pg_advisory_xact_lock($1)", id as i64)
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+
+    match sqlx::query!("SELECT * FROM poe($1, $2, $3, null, null)", id, valor, descricao)
+        .fetch_one(&mut *tx)
+        .await
+        {
+            Ok(row) => {
+                tx.commit().await.unwrap();
+                return Saldo {
+                    saldo: row.saldo_atual,
+                    limite: row.limite_atual
+                }
+            }
+            Err(e) => {
+                println!("Erro ao creditar: {}", e);
+                return Saldo {
+                    saldo: Some(-1),
+                    limite: Some(-1),
+                };
+            }
+        }
+}
+
+#[inline]
+async fn debita(id: i32, valor: i32, descricao: &String, pool: &PgPool) -> Saldo {
+    match sqlx::query!(
+        "SELECT * FROM tira($1, $2, $3, null, null)",
+        id,
+        valor,
+        descricao,
+    )
+    .fetch_one(pool)
+    .await
+    {
+        Ok(row) => {
+            return Saldo {
+                saldo: row.saldo_atual,
+                limite: row.limite_atual
+            }
+        }
+        Err(e) => {
+            println!("Erro ao creditar: {}", e);
+            return Saldo {
+                saldo: Some(-1),
+                limite: Some(-1),
+            };
+        }
+    }
+}
+
+#[inline]
+async fn debita_pessimista(id: i32, valor: i32, descricao: &String, pool: &PgPool) -> Saldo {
+    let mut tx = pool.begin().await.unwrap();
+
+    sqlx::query!("SELECT pg_advisory_xact_lock($1)", id as i64)
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+
+    match sqlx::query!(
+        "SELECT * FROM tira($1, $2, $3, null, null)",
+        id,
+        valor,
+        descricao,
+    )
+    .fetch_one(&mut *tx)
+    .await
+    {
+        Ok(row) => {
+            tx.commit().await.unwrap();
+            return Saldo {
+                saldo: row.saldo_atual,
+                limite: row.limite_atual
+            }
+        }
+        Err(e) => {
+            println!("Erro ao creditar: {}", e);
+            return Saldo {
+                saldo: Some(-1),
+                limite: Some(-1),
+            };
+        }
+    }
+}
+
 async fn põe_transação(
     pool: PgPool,
     id: i32,
@@ -34,45 +148,27 @@ async fn põe_transação(
         Ok(transação) => transação,
         Err(_) => return respond!("Erro ao deserializar", StatusCode::UNPROCESSABLE_ENTITY),
     };
-    if transação.descricao.len() < 1 {
-        return respond!("Descrição muito curta", StatusCode::UNPROCESSABLE_ENTITY);
+    if transação.descricao.len() < 1 || transação.descricao.len() > 10 {
+        return respond!("Descrição muito curta ou muito longa.", StatusCode::UNPROCESSABLE_ENTITY);
     }
 
-    let mut saldo_atual: i32 = 0;
-    let mut limite_atual: i32 = 0;
-    let transação_valor = {
+    let saldo = {
         if transação.tipo == TipoTransação::C {
-            transação.valor
+            if transação.valor > 1 {
+                credita(id, transação.valor, &transação.descricao, &pool).await
+            } else {
+                credita_pessimista(id, transação.valor, &transação.descricao, &pool).await
+            }
         } else {
-            -transação.valor
-        }
-    };
-    let saldo = match sqlx::query!(
-        "CALL atualiza_livro_caixa($1, $2, $3, $4, $5, $6, $7)",
-        id,
-        transação.valor,
-        transação_valor,
-        transação.tipo as _,
-        transação.descricao,
-        *&mut saldo_atual,
-        *&mut limite_atual
-    )
-    .fetch_one(&pool)
-    .await
-    {
-        Ok(row) => Saldo {
-            saldo: row.saldo_atual,
-            limite: row.limite_atual,
-        },
-        Err(_) => {
-            return respond!(
-                "Saldo negativo excede limite",
-                StatusCode::UNPROCESSABLE_ENTITY
-            )
+            if transação.valor > 1 {
+                debita(id, transação.valor, &transação.descricao, &pool).await
+            } else {
+                debita_pessimista(id, transação.valor, &transação.descricao, &pool).await
+            }
         }
     };
 
-    if saldo.saldo.is_none() {
+    if saldo.saldo == Some(-1) && saldo.limite == Some(-1) {
         return respond!(
             "Saldo negativo excede limite",
             StatusCode::UNPROCESSABLE_ENTITY

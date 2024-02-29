@@ -53,7 +53,7 @@ pub enum TipoTransação {
     D,
 }
 
-#[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Transação {
     pub valor: i32,
     pub tipo: TipoTransação,
@@ -68,6 +68,50 @@ impl Clone for Transação {
             TipoTransação::D => TipoTransação::D,
         };
         Transação {
+            valor: self.valor,
+            tipo,
+            descricao: self.descricao.clone(),
+            realizada_em: self.realizada_em,
+        }
+    }
+}
+
+impl From<&TransaçãoBanco> for Transação {
+    fn from(transação: &TransaçãoBanco) -> Self {
+        let tipo = match transação.tipo {
+            TipoTransação::C => TipoTransação::C,
+            TipoTransação::D => TipoTransação::D,
+        };
+        Transação {
+            valor: transação.valor,
+            tipo: tipo,
+            descricao: transação.descricao.clone(),
+            realizada_em: transação.realizada_em,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
+pub struct TransaçãoBanco {
+    pub saldo: i32,
+    pub limite: i32,
+    pub data_extrato: Option<DateTime<Utc>>,
+    pub valor: i32,
+    pub tipo: TipoTransação,
+    pub descricao: String,
+    pub realizada_em: Option<DateTime<Utc>>,
+}
+
+impl Clone for TransaçãoBanco {
+    fn clone(&self) -> Self {
+        let tipo = match self.tipo {
+            TipoTransação::C => TipoTransação::C,
+            TipoTransação::D => TipoTransação::D,
+        };
+        TransaçãoBanco {
+            saldo: self.saldo,
+            limite: self.limite,
+            data_extrato: self.data_extrato,
             valor: self.valor,
             tipo,
             descricao: self.descricao.clone(),
@@ -171,26 +215,26 @@ pub fn extrai_rota(req: &Request<IncomingBody>) -> (Rota, i32) {
 
 #[inline]
 pub async fn lê_extrato(pool: sqlx::PgPool, id: i32) -> Option<Extrato> {
-    let saldo = match sqlx::query_as!(
-        SaldoExtrato,
-        r#"SELECT saldo as total, limite, now() at time zone 'utc' as "data_extrato: DateTime<Utc>"
+    let transações: Vec<TransaçãoBanco> = match sqlx::query_as!(
+        TransaçãoBanco,
+        r#"
+        SELECT
+            users.saldo as saldo,
+            users.limite as limite,
+            now() at time zone 'utc' as "data_extrato: DateTime<Utc>",
+            ledger.valor as valor,
+            ledger.tipo as "tipo: TipoTransação",
+            ledger.descricao as descricao,
+            ledger.realizada_em as "realizada_em: Option<DateTime<Utc>>"
         FROM users
-        WHERE id = $1"#,
-        id
-    )
-    .fetch_one(&pool)
-    .await
-    {
-        Ok(saldo) => saldo,
-        Err(_) => {
-            return None;
-        }
-    };
-
-    let transações: Vec<Transação> = match sqlx::query_as!(
-        Transação,
-        r#"SELECT valor, tipo as "tipo: TipoTransação", descricao, realizada_em from ledger
-	    WHERE id_cliente = $1 ORDER BY realizada_em DESC LIMIT 10"#,
+        LEFT JOIN 
+            ledger ON ledger.id_cliente = users.id
+        WHERE
+            users.id = $1
+        ORDER BY
+            ledger.realizada_em DESC
+        LIMIT 10
+        "#,
         id
     )
     .fetch_all(&pool)
@@ -198,13 +242,41 @@ pub async fn lê_extrato(pool: sqlx::PgPool, id: i32) -> Option<Extrato> {
     {
         Ok(transações) => Vec::from(transações),
         Err(_) => {
-            return None;
+            [].to_vec()
         }
+    };
+
+    if transações.is_empty() {
+        let saldo = match sqlx::query_as!(
+            SaldoExtrato,
+            r#"SELECT saldo as total, limite, now() at time zone 'utc' as "data_extrato: DateTime<Utc>"
+            FROM users
+            WHERE id = $1"#,
+            id
+        )
+        .fetch_one(&pool)
+        .await
+        {
+            Ok(saldo) => saldo,
+            Err(_) => {
+                return None;
+            }
+        };
+        return Some(Extrato {
+            saldo,
+            ultimas_transacoes: [].to_vec(),
+        });
+    }
+
+    let saldo = SaldoExtrato {
+        total: transações[0].saldo,
+        limite: transações[0].limite,
+        data_extrato: transações[0].data_extrato,
     };
 
     Some(Extrato {
         saldo,
-        ultimas_transacoes: transações,
+        ultimas_transacoes: transações.iter().map(|t| Transação::from(t)).collect(),
     })
 }
 
