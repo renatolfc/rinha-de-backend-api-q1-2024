@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT * FROM poe($1, $2, $3, null, null)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "saldo_atual",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "limite_atual",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4",
+        "Varchar"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "acde3d7b72e61704de9b169434c67dcbdda00217243aef06e81ebba8853fb191"
+}
