@@ -24,7 +24,7 @@ where
 
 #[inline]
 async fn credita(id: i32, valor: i32, descricao: &String, pool: &PgPool) -> Saldo {
-    match sqlx::query!("SELECT * FROM poe($1, $2, $3, null, null)", id, valor, descricao)
+    match sqlx::query!("CALL poe($1, $2, $3, null, null)", id, valor, descricao)
         .fetch_one(pool)
         .await
         {
@@ -45,39 +45,9 @@ async fn credita(id: i32, valor: i32, descricao: &String, pool: &PgPool) -> Sald
 }
 
 #[inline]
-async fn credita_pessimista(id: i32, valor: i32, descricao: &String, pool: &PgPool) -> Saldo {
-    let mut tx = pool.begin().await.unwrap();
-
-    sqlx::query!("SELECT pg_advisory_xact_lock($1)", id as i64)
-        .execute(&mut *tx)
-        .await
-        .unwrap();
-
-    match sqlx::query!("SELECT * FROM poe($1, $2, $3, null, null)", id, valor, descricao)
-        .fetch_one(&mut *tx)
-        .await
-        {
-            Ok(row) => {
-                tx.commit().await.unwrap();
-                return Saldo {
-                    saldo: row.saldo_atual,
-                    limite: row.limite_atual
-                }
-            }
-            Err(e) => {
-                println!("Erro ao creditar: {}", e);
-                return Saldo {
-                    saldo: Some(-1),
-                    limite: Some(-1),
-                };
-            }
-        }
-}
-
-#[inline]
 async fn debita(id: i32, valor: i32, descricao: &String, pool: &PgPool) -> Saldo {
     match sqlx::query!(
-        "SELECT * FROM tira($1, $2, $3, null, null)",
+        "CALL tira($1, $2, $3, null, null)",
         id,
         valor,
         descricao,
@@ -86,41 +56,6 @@ async fn debita(id: i32, valor: i32, descricao: &String, pool: &PgPool) -> Saldo
     .await
     {
         Ok(row) => {
-            return Saldo {
-                saldo: row.saldo_atual,
-                limite: row.limite_atual
-            }
-        }
-        Err(e) => {
-            println!("Erro ao creditar: {}", e);
-            return Saldo {
-                saldo: Some(-1),
-                limite: Some(-1),
-            };
-        }
-    }
-}
-
-#[inline]
-async fn debita_pessimista(id: i32, valor: i32, descricao: &String, pool: &PgPool) -> Saldo {
-    let mut tx = pool.begin().await.unwrap();
-
-    sqlx::query!("SELECT pg_advisory_xact_lock($1)", id as i64)
-        .execute(&mut *tx)
-        .await
-        .unwrap();
-
-    match sqlx::query!(
-        "SELECT * FROM tira($1, $2, $3, null, null)",
-        id,
-        valor,
-        descricao,
-    )
-    .fetch_one(&mut *tx)
-    .await
-    {
-        Ok(row) => {
-            tx.commit().await.unwrap();
             return Saldo {
                 saldo: row.saldo_atual,
                 limite: row.limite_atual
@@ -151,17 +86,9 @@ async fn põe_transação(
 
     let saldo = {
         if transação.tipo == TipoTransação::C {
-            if transação.valor > 1 {
-                credita(id, transação.valor, &transação.descricao, &pool).await
-            } else {
-                credita_pessimista(id, transação.valor, &transação.descricao, &pool).await
-            }
+            credita(id, transação.valor, &transação.descricao, &pool).await
         } else {
-            if transação.valor > 1 {
-                debita(id, transação.valor, &transação.descricao, &pool).await
-            } else {
-                debita_pessimista(id, transação.valor, &transação.descricao, &pool).await
-            }
+            debita(id, transação.valor, &transação.descricao, &pool).await
         }
     };
 
