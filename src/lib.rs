@@ -5,7 +5,6 @@ use chrono::{DateTime, Utc};
 use clap::Parser;
 use http_body_util::{BodyExt, Full};
 use hyper::{body::Incoming as IncomingBody, Method, Request, Response, StatusCode};
-use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 pub type GenericError = Box<dyn std::error::Error + Send + Sync>;
@@ -187,28 +186,24 @@ pub enum Rota {
 }
 
 pub fn extrai_rota(req: &Request<IncomingBody>) -> (Rota, i32) {
-    let rota_re = Regex::new(r"/clientes/([0-9]+)/(extrato|transacoes)/?").unwrap();
-    if rota_re.is_match(req.uri().path()) {
-        let id = rota_re
-            .captures(req.uri().path())
-            .unwrap()
-            .get(1)
-            .unwrap()
-            .as_str()
-            .parse::<i32>()
-            .unwrap();
-        let rota = rota_re
-            .captures(req.uri().path())
-            .unwrap()
-            .get(2)
-            .unwrap()
-            .as_str();
-        if req.method() == &Method::GET && rota == "extrato" && id > 0 && id < 6 {
-            return (Rota::PEGA, id);
-        }
-        if req.method() == &Method::POST && rota == "transacoes" && id > 0 && id < 6 {
-            return (Rota::PÕE, id);
-        }
+    let path = req.uri().path();
+    let id_potencial: Option<&str> = path.get(10 as usize..11 as usize);
+    if id_potencial.is_none() {
+        return (Rota::NENHUMA, 0);
+    }
+    let id = id_potencial.unwrap().parse::<i32>();
+    if id.is_err() {
+        return (Rota::NENHUMA, 0);
+    }
+    let id = id.unwrap();
+    if !path.starts_with("/clientes/") {
+        return (Rota::NENHUMA, 0);
+    }
+    if req.method() == &Method::GET && path.ends_with("/extrato") && id > 0 && id < 6 {
+        return (Rota::PEGA, id);
+    }
+    if req.method() == &Method::POST && path.ends_with("/transacoes") && id > 0 && id < 6 {
+        return (Rota::PÕE, id);
     }
     (Rota::NENHUMA, 0)
 }
