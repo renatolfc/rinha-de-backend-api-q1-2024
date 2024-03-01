@@ -120,7 +120,7 @@ async fn pega_extrato(pool: PgPool, id: i32) -> Result<Response<BoxBody>> {
     }
 }
 
-#[tokio::main(worker_threads = 8)]
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let port = std::env::var("PORT").unwrap_or_else(|_| "9999".into());
     let port = port.parse::<u16>().unwrap();
