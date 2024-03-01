@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT * FROM poe($1, $2, $3, null, null)",
+  "query": "CALL poe($1, $2, $3, null, null)",
   "describe": {
     "columns": [
       {
@@ -26,5 +26,5 @@
       null
     ]
   },
-  "hash": "acde3d7b72e61704de9b169434c67dcbdda00217243aef06e81ebba8853fb191"
+  "hash": "8d0f9a17104227b1c8cbe899afa12635700557bcee0269f0c3d8c41500938964"
 }

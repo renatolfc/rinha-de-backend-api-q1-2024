@@ -1,5 +1,5 @@
 CREATE TYPE tipot AS ENUM ('C', 'D');
-CREATE TABLE ledger (
+CREATE UNLOGGED TABLE ledger (
   id SERIAL PRIMARY KEY,
   id_cliente INTEGER NOT NULL,
   valor INTEGER NOT NULL,

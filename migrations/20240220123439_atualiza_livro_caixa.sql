@@ -1,4 +1,4 @@
-CREATE FUNCTION poe(
+CREATE PROCEDURE poe(
   idc INTEGER,
   v INTEGER,
   d VARCHAR(10),
@@ -8,6 +8,8 @@ CREATE FUNCTION poe(
 LANGUAGE plpgsql AS
 $$
 BEGIN
+  PERFORM pg_advisory_xact_lock(idc);
+
   INSERT INTO ledger (
     id_cliente,
     valor,
@@ -19,10 +21,11 @@ BEGIN
   SET saldo = saldo + v
     WHERE users.id = idc
     RETURNING saldo, limite INTO saldo_atual, limite_atual;
+  COMMIT;
 END;
 $$;
 
-CREATE FUNCTION tira(
+CREATE PROCEDURE tira(
   idc INTEGER,
   v INTEGER,
   d VARCHAR(10),
@@ -32,6 +35,8 @@ CREATE FUNCTION tira(
 LANGUAGE plpgsql AS
 $$
 BEGIN
+  PERFORM pg_advisory_xact_lock(idc);
+
   SELECT limite, saldo INTO limite_atual, saldo_atual
   FROM users
   WHERE id = idc;
@@ -48,6 +53,7 @@ BEGIN
     SET saldo = saldo - v
       WHERE users.id = idc
       RETURNING saldo, limite INTO saldo_atual, limite_atual;
+    COMMIT;
   ELSE
     SELECT -1, -1 INTO saldo_atual, limite_atual;
   END IF;
