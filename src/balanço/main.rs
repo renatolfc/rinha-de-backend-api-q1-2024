@@ -5,15 +5,12 @@ use hyper::{server::conn::http1, service::service_fn};
 use hyper_util::rt::TokioIo;
 use tokio::net::{TcpListener, TcpStream};
 
-#[global_allocator]
-static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
-
 #[inline]
 fn split_str(input: &str) -> Vec<String> {
     input.split(',').map(|s| s.to_string()).collect()
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let servers =
         split_str(&env::var("SERVERS").unwrap_or_else(|_| "api01:9999,api02:9999".into()));

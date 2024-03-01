@@ -12,9 +12,6 @@ use tokio::net::TcpListener;
 
 use rinha::*;
 
-#[global_allocator]
-static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
-
 #[inline]
 pub async fn deserialize<T>(req: Request<IncomingBody>) -> Result<T>
 where
