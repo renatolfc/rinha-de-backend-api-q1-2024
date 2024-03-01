@@ -203,6 +203,9 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let pool = sqlx::postgres::PgPoolOptions::new()
         .max_connections(args.max_pool)
         .min_connections(args.min_pool)
+        .test_before_acquire(false)
+        .max_lifetime(None)
+        .idle_timeout(None)
         .connect(args.dburi.as_str())
         .await?;
 
