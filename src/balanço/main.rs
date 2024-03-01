@@ -25,7 +25,9 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         .flatten()
         .collect();
 
-    let in_addr: SocketAddr = ([0, 0, 0, 0], 1108).into();
+    let port = std::env::var("PORT").unwrap_or_else(|_| "1108".into());
+    let port = port.parse::<u16>().unwrap();
+    let in_addr: SocketAddr = ([0, 0, 0, 0], port).into();
     let listener = TcpListener::bind(in_addr).await?;
     println!("Listening on {}", in_addr);
     let mut counter = 0;

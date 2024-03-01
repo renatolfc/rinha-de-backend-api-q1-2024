@@ -195,7 +195,9 @@ async fn pega_extrato(pool: PgPool, id: i32) -> Result<Response<BoxBody>> {
 
 #[tokio::main(worker_threads = 8)]
 async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
-    let addr: SocketAddr = ([0, 0, 0, 0], 9999).into();
+    let port = std::env::var("PORT").unwrap_or_else(|_| "9999".into());
+    let port = port.parse::<u16>().unwrap();
+    let addr: SocketAddr = ([0, 0, 0, 0], port).into();
 
     let args = Args::parse();
     let pool = sqlx::postgres::PgPoolOptions::new()
