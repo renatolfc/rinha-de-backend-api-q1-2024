@@ -8,8 +8,6 @@ CREATE PROCEDURE poe(
 LANGUAGE plpgsql AS
 $$
 BEGIN
-  PERFORM pg_advisory_xact_lock(idc);
-
   INSERT INTO ledger (
     id_cliente,
     valor,
@@ -18,7 +16,7 @@ BEGIN
   ) VALUES (idc, v, 'C', d);
 
   UPDATE users
-  SET saldo = saldo + v
+  SET saldo = saldo + v, atualizado_em = CURRENT_TIMESTAMP
     WHERE users.id = idc
     RETURNING saldo, limite INTO saldo_atual, limite_atual;
   COMMIT;
@@ -50,7 +48,7 @@ BEGIN
     ) VALUES (idc, v, 'D', d);
 
     UPDATE users
-    SET saldo = saldo - v
+      SET saldo = saldo - v, atualizado_em = CURRENT_TIMESTAMP
       WHERE users.id = idc
       RETURNING saldo, limite INTO saldo_atual, limite_atual;
     COMMIT;
