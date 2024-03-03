@@ -225,7 +225,8 @@ pub async fn lê_extrato(pool: sqlx::PgPool, id: i32) -> Option<Extrato> {
         LEFT JOIN 
             ledger ON ledger.id_cliente = users.id
         WHERE
-            users.id = $1
+            users.id = $1 AND
+            ledger.realizada_em <= users.atualizado_em
         ORDER BY
             ledger.realizada_em DESC
         LIMIT 10
