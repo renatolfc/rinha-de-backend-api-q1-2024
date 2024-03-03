@@ -127,13 +127,18 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let addr: SocketAddr = ([0, 0, 0, 0], port).into();
 
     let args = Args::parse();
+    let opts: sqlx::postgres::PgConnectOptions = args.dburi.parse::<sqlx::postgres::PgConnectOptions>()?
+        .extra_float_digits(None)
+        .statement_cache_capacity(256);
+
     let pool = sqlx::postgres::PgPoolOptions::new()
         .max_connections(args.max_pool)
         .min_connections(args.min_pool)
         .test_before_acquire(false)
         .max_lifetime(None)
         .idle_timeout(None)
-        .connect(args.dburi.as_str())
+//        .after_release(|_conn, meta| Box::pin(async move { Ok(meta.age.as_secs() < 60) }))
+        .connect_with(opts)
         .await?;
 
     let listener = TcpListener::bind(addr).await?;
