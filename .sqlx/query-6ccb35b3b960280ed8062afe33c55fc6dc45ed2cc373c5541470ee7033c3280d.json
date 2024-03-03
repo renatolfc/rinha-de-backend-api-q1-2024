@@ -1,0 +1,68 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            users.saldo as saldo,\n            users.limite as limite,\n            now() at time zone 'utc' as \"data_extrato: DateTime<Utc>\",\n            ledger.valor as valor,\n            ledger.tipo as \"tipo: TipoTransação\",\n            ledger.descricao as descricao,\n            ledger.realizada_em as \"realizada_em: Option<DateTime<Utc>>\"\n        FROM users\n        LEFT JOIN \n            ledger ON ledger.id_cliente = users.id\n        WHERE\n            users.id = $1 AND\n            ledger.realizada_em <= users.atualizado_em\n        ORDER BY\n            ledger.realizada_em DESC\n        LIMIT 10\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "saldo",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "limite",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "data_extrato: DateTime<Utc>",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 3,
+        "name": "valor",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "tipo: TipoTransação",
+        "type_info": {
+          "Custom": {
+            "name": "tipot",
+            "kind": {
+              "Enum": [
+                "C",
+                "D"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "descricao",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "realizada_em: Option<DateTime<Utc>>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      null,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "6ccb35b3b960280ed8062afe33c55fc6dc45ed2cc373c5541470ee7033c3280d"
+}
