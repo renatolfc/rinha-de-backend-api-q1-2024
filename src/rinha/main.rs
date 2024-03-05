@@ -137,7 +137,6 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         .test_before_acquire(false)
         .max_lifetime(None)
         .idle_timeout(None)
-//        .after_release(|_conn, meta| Box::pin(async move { Ok(meta.age.as_secs() < 60) }))
         .connect_with(opts)
         .await?;
 

@@ -10,7 +10,7 @@ fn split_str(input: &str) -> Vec<String> {
     input.split(',').map(|s| s.to_string()).collect()
 }
 
-#[tokio::main(worker_threads = 16)]
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let servers =
         split_str(&env::var("SERVERS").unwrap_or_else(|_| "api01:9999,api02:9999".into()));
