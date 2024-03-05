@@ -1,2 +1,2 @@
 [build]
-rustflags = ["-C", "target-feature=+avx2", "-C", "target-feature=+fma", "-C", "target-feature=+ssse3", "-C", "target-cpu=x86-64-v3"]
+rustflags = ["-C", "target-feature=+avx2", "-C", "target-feature=+fma", "-C", "target-feature=+ssse3", "-C", "target-cpu=x86-64-v3", "-C", "target-feature=+crt-static"]
