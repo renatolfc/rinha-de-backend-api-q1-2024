@@ -1,9 +1,45 @@
 use std::env;
 use std::net::{SocketAddr, ToSocketAddrs};
 
-use hyper::{server::conn::http1, service::service_fn};
-use hyper_util::rt::TokioIo;
-use tokio::net::{TcpListener, TcpStream};
+use async_trait::async_trait;
+use deadpool::managed;
+use rand::Rng;
+use tokio::io::AsyncWriteExt;
+use tokio::{
+    io,
+    net::{TcpListener, TcpStream},
+};
+
+struct Manager {
+    servers: Vec<SocketAddr>,
+}
+
+#[async_trait]
+impl managed::Manager for Manager {
+    type Type = TcpStream;
+    type Error = io::Error;
+
+    async fn create(&self) -> Result<Self::Type, Self::Error> {
+        let index = rand::thread_rng().gen_range(0..self.servers.len());
+        let server = self.servers[index];
+        let stream = TcpStream::connect(server).await.unwrap();
+        stream.set_nodelay(true).expect("set_nodelay call failed");
+
+        Ok(stream)
+    }
+
+    async fn recycle(
+        &self,
+        _conn: &mut Self::Type,
+        _: &managed::Metrics,
+    ) -> managed::RecycleResult<Self::Error> {
+        let (_, mut write) = _conn.split();
+        write.shutdown().await?;
+        Ok(())
+    }
+}
+
+type Pool = managed::Pool<Manager>;
 
 #[inline]
 fn split_str(input: &str) -> Vec<String> {
@@ -11,7 +47,7 @@ fn split_str(input: &str) -> Vec<String> {
 }
 
 #[tokio::main(flavor = "current_thread")]
-async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
+async fn main() -> io::Result<()> {
     let servers =
         split_str(&env::var("SERVERS").unwrap_or_else(|_| "api01:9999,api02:9999".into()));
     println!("Servers: {:?}", servers);
@@ -29,51 +65,27 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let port = port.parse::<u16>().unwrap();
     let in_addr: SocketAddr = ([0, 0, 0, 0], port).into();
     let listener = TcpListener::bind(in_addr).await?;
+    let pool = Pool::builder(Manager {
+        servers: inet_addrs.clone(),
+    })
+    .max_size(32)
+    .build()
+    .unwrap();
     println!("Listening on {}", in_addr);
+
     let mut counter = 0;
-
-    loop {
+    while let Ok((mut downstream, _)) = listener.accept().await {
         counter = (counter + 1) % inet_addrs.len();
-        let out_addr = inet_addrs[counter];
+        let pool = pool.clone();
 
-        let (stream, _) = listener.accept().await?;
-        let io = TokioIo::new(stream);
-
-        let service = service_fn(move |mut req| {
-            let uri_string = format!(
-                "http://{}{}",
-                out_addr,
-                req.uri()
-                    .path_and_query()
-                    .map(|x| x.as_str())
-                    .unwrap_or("/")
-            );
-            let uri = uri_string.parse().unwrap();
-            *req.uri_mut() = uri;
-
-            let host = req.uri().host().expect("uri has no host");
-            let port = req.uri().port_u16().unwrap_or(80);
-            let addr = format!("{}:{}", host, port);
-
-            async move {
-                let client_stream = TcpStream::connect(addr).await.unwrap();
-                let io = TokioIo::new(client_stream);
-
-                let (mut sender, conn) = hyper::client::conn::http1::handshake(io).await?;
-                tokio::task::spawn(async move {
-                    if let Err(err) = conn.await {
-                        println!("Connection failed: {:?}", err);
-                    }
-                });
-
-                sender.send_request(req).await
-            }
-        });
-
-        tokio::task::spawn(async move {
-            if let Err(err) = http1::Builder::new().serve_connection(io, service).await {
-                println!("Failed to serve the connection: {:?}", err);
-            }
+        tokio::spawn(async move {
+            let mut upstream = pool.get().await.unwrap();
+            let mut upstream = upstream.as_mut();
+            io::copy_bidirectional(&mut downstream, &mut upstream)
+                .await
+                .unwrap();
         });
     }
+
+    Ok(())
 }
