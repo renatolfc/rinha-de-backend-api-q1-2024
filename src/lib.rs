@@ -237,9 +237,7 @@ pub async fn lê_extrato(pool: sqlx::PgPool, id: i32) -> Option<Extrato> {
     .await
     {
         Ok(transações) => Vec::from(transações),
-        Err(_) => {
-            [].to_vec()
-        }
+        Err(_) => [].to_vec(),
     };
 
     if transações.is_empty() {
