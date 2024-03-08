@@ -27,38 +27,33 @@ async fn credita(id: i32, valor: i32, descricao: &String, pool: &PgPool) -> Sald
     match sqlx::query!("CALL poe($1, $2, $3, null, null)", id, valor, descricao)
         .fetch_one(pool)
         .await
-        {
-            Ok(row) => {
-                return Saldo {
-                    saldo: row.saldo_atual,
-                    limite: row.limite_atual
-                }
-            }
-            Err(e) => {
-                println!("Erro ao creditar: {}", e);
-                return Saldo {
-                    saldo: Some(-1),
-                    limite: Some(-1),
-                };
-            }
-        }
-}
-
-#[inline]
-async fn debita(id: i32, valor: i32, descricao: &String, pool: &PgPool) -> Saldo {
-    match sqlx::query!(
-        "CALL tira($1, $2, $3, null, null)",
-        id,
-        valor,
-        descricao,
-    )
-    .fetch_one(pool)
-    .await
     {
         Ok(row) => {
             return Saldo {
                 saldo: row.saldo_atual,
-                limite: row.limite_atual
+                limite: row.limite_atual,
+            }
+        }
+        Err(e) => {
+            println!("Erro ao creditar: {}", e);
+            return Saldo {
+                saldo: Some(-1),
+                limite: Some(-1),
+            };
+        }
+    }
+}
+
+#[inline]
+async fn debita(id: i32, valor: i32, descricao: &String, pool: &PgPool) -> Saldo {
+    match sqlx::query!("CALL tira($1, $2, $3, null, null)", id, valor, descricao,)
+        .fetch_one(pool)
+        .await
+    {
+        Ok(row) => {
+            return Saldo {
+                saldo: row.saldo_atual,
+                limite: row.limite_atual,
             }
         }
         Err(e) => {
@@ -81,7 +76,10 @@ async fn põe_transação(
         Err(_) => return respond!("Erro ao deserializar", StatusCode::UNPROCESSABLE_ENTITY),
     };
     if transação.descricao.len() < 1 || transação.descricao.len() > 10 {
-        return respond!("Descrição muito curta ou muito longa.", StatusCode::UNPROCESSABLE_ENTITY);
+        return respond!(
+            "Descrição muito curta ou muito longa.",
+            StatusCode::UNPROCESSABLE_ENTITY
+        );
     }
 
     let saldo = {
@@ -127,7 +125,9 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let addr: SocketAddr = ([0, 0, 0, 0], port).into();
 
     let args = Args::parse();
-    let opts: sqlx::postgres::PgConnectOptions = args.dburi.parse::<sqlx::postgres::PgConnectOptions>()?
+    let opts: sqlx::postgres::PgConnectOptions = args
+        .dburi
+        .parse::<sqlx::postgres::PgConnectOptions>()?
         .extra_float_digits(None)
         .statement_cache_capacity(256);
 
