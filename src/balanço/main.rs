@@ -3,12 +3,13 @@ use std::net::{SocketAddr, ToSocketAddrs};
 
 use async_trait::async_trait;
 use deadpool::managed;
-use rand::Rng;
 use tokio::io::AsyncWriteExt;
 use tokio::{
     io,
     net::{TcpListener, TcpStream},
 };
+
+static mut COUNTER: usize = 0;
 
 struct Manager {
     servers: Vec<SocketAddr>,
@@ -20,12 +21,14 @@ impl managed::Manager for Manager {
     type Error = io::Error;
 
     async fn create(&self) -> Result<Self::Type, Self::Error> {
-        let index = rand::thread_rng().gen_range(0..self.servers.len());
-        let server = self.servers[index];
-        let stream = TcpStream::connect(server).await.unwrap();
-        stream.set_nodelay(true).expect("set_nodelay call failed");
+        unsafe {
+            COUNTER = (COUNTER + 1) % self.servers.len();
+            let server = self.servers[COUNTER];
+            let stream = TcpStream::connect(server).await.unwrap();
+            stream.set_nodelay(true).expect("set_nodelay call failed");
 
-        Ok(stream)
+            Ok(stream)
+        }
     }
 
     async fn recycle(
